@@ -70,6 +70,7 @@ bool IsPressed(int button_pin, unsigned long press_duration = BUTTONS_PRESS_TIME
 /* Callback function to get the Email sending status */
 void smtpCallback(SMTP_Status status);
 
+#define WIFI_CONNECTION_TIMEOUT 30000 // 30s
 bool ConnectToWifiAndSendEmail(String floating_status, String email_content){
   if (DEBUG){
     Serial.println();
@@ -77,7 +78,16 @@ bool ConnectToWifiAndSendEmail(String floating_status, String email_content){
   }
   
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  unsigned long connection_start = millis();
   while (WiFi.status() != WL_CONNECTED){
+    if (millis() - connection_start > WIFI_CONNECTION_TIMEOUT) {
+
+        if (DEBUG){
+          Serial.println("Unable to connect to the WiFi, skipping");
+        }
+      return false;  
+    }
+    
     if (DEBUG){
       Serial.print(".");
     }
@@ -195,10 +205,10 @@ void loop(){
   
   if (!last_email_succesfully_sent) {
       switch(current_status) {
-        case FINE: ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità."); break;
-        case WARNING_RESTORING: ConnectToWifiAndSendEmail("RESTORING?", "Il galleggiante alto è disattivo, ma quello basso è ancora sommerso!"); break;
-        case WARNING: ConnectToWifiAndSendEmail("WARNING", "Il galleggiante basso è scattato!"); break;
-        case CRITICAL: ConnectToWifiAndSendEmail("CRITICAL", "Il galleggiante alto è scattato!"); break;
+        case FINE: last_email_succesfully_sent = ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità."); break;
+        case WARNING_RESTORING: last_email_succesfully_sent = ConnectToWifiAndSendEmail("RESTORING?", "Il galleggiante alto è disattivo, ma quello basso è ancora sommerso!"); break;
+        case WARNING: last_email_succesfully_sent = ConnectToWifiAndSendEmail("WARNING", "Il galleggiante basso è scattato!"); break;
+        case CRITICAL: last_email_succesfully_sent = ConnectToWifiAndSendEmail("CRITICAL", "Il galleggiante alto è scattato!"); break;
       }
   }
 
@@ -245,8 +255,11 @@ void loop(){
 
     last_email_succesfully_sent = ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità.");
   } 
-
-  delay(1000);
+  if (current_status == FINE){
+    delay(60000);
+  } else {
+    delay(10000);
+  }
 }
 
 /* Callback function to get the Email sending status */
