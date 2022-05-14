@@ -32,9 +32,12 @@ String names[]  = {"Federico", "Federico"};
 #define BUZZER_PIN        14 // Pin which control the buzzer
 APlayer myPlayer(BUZZER_PIN); // Create a player object specifying the buzzer's pin
 
-#define GREENLED_PIN   16 // Pin to control green LED
-#define REDLED_PIN      5 // Pin to control red LED
-#define YELLOWLED_PIN   4 // Pin to control yellow LED
+#define GREENLED_PIN 16 // Pin to control green LED
+#define REDLED_PIN    5 // Pin to control red LED
+#define BLUELED_PIN   4 // Pin to control yellow LED
+
+#define STATUS_EMAIL_INTERVAL 604800000
+unsigned long int last_email_sent = millis() - STATUS_EMAIL_INTERVAL; // This is to ensure that the email will be sent at startup
 
 /* The SMTP Session object used for Email sending */
 SMTPSession smtp;
@@ -168,16 +171,33 @@ bool ConnectToWifiAndSendEmail(String floating_status, String email_content){
   return true;
 }
 
+void SetBlue(){
+  analogWrite(BLUELED_PIN , 255);
+  analogWrite(REDLED_PIN  , 0);
+  analogWrite(GREENLED_PIN, 0);   
+}
+
+void SetRed(){
+  analogWrite(BLUELED_PIN , 0);
+  analogWrite(REDLED_PIN  , 255);
+  analogWrite(GREENLED_PIN, 0);   
+}
+
+void SetGreen(){
+  analogWrite(BLUELED_PIN , 0);
+  analogWrite(REDLED_PIN  , 0);
+  analogWrite(GREENLED_PIN, 255);   
+}
+
 void setup(){
-  pinMode(FLOATINGLOW_PIN, INPUT);
+  pinMode(FLOATINGLOW_PIN  , INPUT);
+  pinMode(FLOATINGHIGHT_PIN, INPUT);
 
-  pinMode(GREENLED_PIN, OUTPUT);
-  pinMode(REDLED_PIN, OUTPUT);
-  pinMode(YELLOWLED_PIN, OUTPUT);
+  pinMode(BLUELED_PIN, OUTPUT);
+  pinMode(REDLED_PIN , OUTPUT);
+  pinMode(BLUELED_PIN, OUTPUT);
 
-  digitalWrite(GREENLED_PIN, HIGH);
-  digitalWrite(REDLED_PIN, LOW);
-  digitalWrite(YELLOWLED_PIN, LOW);
+  SetGreen();
 
   if (DEBUG){
     Serial.begin(115200);
@@ -196,12 +216,24 @@ int last_email_succesfully_sent = true;
 
 void loop(){
 
+  if (millis() - last_email_sent > STATUS_EMAIL_INTERVAL) {
+      ConnectToWifiAndSendEmail("CHECKUP", "Il sitema è up and running!");
+      last_email_sent = millis();
+  }
+
   if (current_status != FINE) {
       myPlayer.play(ALARM);
   }
 
   bool hight_floating_pressed = IsPressed(FLOATINGHIGHT_PIN);
   bool   low_floating_pressed = IsPressed(FLOATINGLOW_PIN);
+
+  if (DEBUG) {
+    Serial.println("");
+    Serial.print("hight_floating_pressed = "); hight_floating_pressed ? Serial.println("true") : Serial.println("false");
+    Serial.print("low_floating_pressed = ");   low_floating_pressed ? Serial.println("true") : Serial.println("false");
+  }
+
   
   if (!last_email_succesfully_sent) {
       switch(current_status) {
@@ -217,19 +249,15 @@ void loop(){
   if (hight_floating_pressed && current_status != CRITICAL){   
     current_status = CRITICAL; // Update the current status
 
-    /* Change LED status: red and yellow ON; green OFF */
-    digitalWrite(YELLOWLED_PIN, HIGH);
-    digitalWrite(REDLED_PIN   , HIGH);
-    digitalWrite(GREENLED_PIN , LOW );   
+    /* Change LED status: RED */
+    SetRed();
 
     last_email_succesfully_sent = ConnectToWifiAndSendEmail("CRITICAL", "Il galleggiante alto è scattato!");
   } 
   
   if (low_floating_pressed && !hight_floating_pressed && current_status != WARNING && current_status != WARNING_RESTORING){   
-    /* Change LED status: red ON; yellow and green OFF */
-    digitalWrite(YELLOWLED_PIN, HIGH);
-    digitalWrite(GREENLED_PIN , LOW);   
-    digitalWrite(REDLED_PIN   , LOW);
+    /* Change LED status: RED */
+    SetBlue();
 
     if (current_status == FINE){
       if (DEBUG){
@@ -248,10 +276,8 @@ void loop(){
   if (current_status != FINE && !low_floating_pressed && !hight_floating_pressed /* This second check should be useless, but I'll leave to "cope" with a broken lower floating */){  
     current_status = FINE; // Update the current status
 
-    /* Change LED status: green ON; yellow and red OFF */
-    digitalWrite(YELLOWLED_PIN, LOW);
-    digitalWrite(REDLED_PIN   , LOW);   
-    digitalWrite(GREENLED_PIN , HIGH);   
+    /* Change LED status: GREEN;*/
+    SetGreen();
 
     last_email_succesfully_sent = ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità.");
   } 
