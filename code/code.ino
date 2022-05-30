@@ -1,6 +1,6 @@
 #include <aplayer.h> // Code from https://github.com/prittt/ArduinoBuzzerPlayer
 
-#define DEBUG true
+#define DEBUG false
 
 #include <Arduino.h>
 #include <aplayer.h>
@@ -12,8 +12,10 @@
 #endif
 #include <ESP_Mail_Client.h>
 
-#define WIFI_SSID "HUAWEI P20"
-#define WIFI_PASSWORD "123456789"
+//#define WIFI_SSID "HUAWEI P20"
+//#define WIFI_PASSWORD "123456789"
+#define WIFI_SSID "welcometothejungle"
+#define WIFI_PASSWORD "W!ldB&&r52"
 
 #define SMTP_HOST "smtp.gmail.com"
 #define SMTP_PORT 465
@@ -23,9 +25,9 @@
 #define AUTHOR_PASSWORD "ibqjxrdfflnfwngy"
 
 /* Recipient's emails and names*/
-String emails[] = {"federico.bolelli@unimore.it", "lk_number1@hotmail.it"};
+String emails[] = {"federico.bolelli@unimore.it", "elena.bega.mo@gmail.com"};
 size_t emails_size = sizeof(emails)/sizeof(String);
-String names[]  = {"Federico", "Federico"};
+String names[]  = {"Federico", "Elena"};
 
 #define FLOATINGLOW_PIN   12 // Pin connected to the lower floating
 #define FLOATINGHIGHT_PIN 13 // Pin connected to the higher floating
@@ -36,8 +38,14 @@ APlayer myPlayer(BUZZER_PIN); // Create a player object specifying the buzzer's 
 #define REDLED_PIN    5 // Pin to control red LED
 #define BLUELED_PIN   4 // Pin to control yellow LED
 
-#define STATUS_EMAIL_INTERVAL 604800000
+#define STATUS_EMAIL_INTERVAL 604800000 // One week
 unsigned long int last_email_sent = millis() - STATUS_EMAIL_INTERVAL; // This is to ensure that the email will be sent at startup
+
+#define WIFI_CONNECTION_TIMEOUT 15000  // 15s // 30000 // 30s
+#define LOOP_DELAY_NORMAL_MODE  10000  // 10s // 300000 // 5m
+#define LOOP_DELAY_PROBLEM_MODE 10000  // 10s 
+
+#define ADDITIONAL_BUTTON 10
 
 /* The SMTP Session object used for Email sending */
 SMTPSession smtp;
@@ -73,7 +81,6 @@ bool IsPressed(int button_pin, unsigned long press_duration = BUTTONS_PRESS_TIME
 /* Callback function to get the Email sending status */
 void smtpCallback(SMTP_Status status);
 
-#define WIFI_CONNECTION_TIMEOUT 30000 // 30s
 bool ConnectToWifiAndSendEmail(String floating_status, String email_content){
   if (DEBUG){
     Serial.println();
@@ -193,6 +200,8 @@ void setup(){
   pinMode(FLOATINGLOW_PIN  , INPUT);
   pinMode(FLOATINGHIGHT_PIN, INPUT);
 
+  pinMode(ADDITIONAL_BUTTON, INPUT);
+
   pinMode(BLUELED_PIN, OUTPUT);
   pinMode(REDLED_PIN , OUTPUT);
   pinMode(BLUELED_PIN, OUTPUT);
@@ -214,27 +223,75 @@ enum system_status {
 int current_status = FINE;
 int last_email_succesfully_sent = true;
 
+void SetOff() {
+  analogWrite(BLUELED_PIN , 0);
+  analogWrite(REDLED_PIN  , 0);
+  analogWrite(GREENLED_PIN, 0);   
+}
+
+void BlinkRed(int n = 3, int freq = 100) {
+  for (int i = 0; i < n; ++i) {
+    SetRed();
+    delay(freq);
+    SetOff();
+    delay(freq);  
+  }
+}
+
+void BlinkGreen(int n = 3, int freq = 100) {
+  for (int i = 0; i < n; ++i) {
+    SetGreen();
+    delay(freq);
+    SetOff();
+    delay(freq);  
+  }
+}
+
+bool alarm_disabled = false;
+
 void loop(){
+
+  bool hight_floating_pressed = IsPressed(FLOATINGHIGHT_PIN);
+  bool   low_floating_pressed = IsPressed(FLOATINGLOW_PIN);
+  bool   additional_button    = IsPressed(ADDITIONAL_BUTTON, BUTTONS_PRESS_TIME_SHORT, 0);
+
+  if (DEBUG) {
+    Serial.println("");
+    Serial.print("hight_floating_pressed = "); hight_floating_pressed ? Serial.println("true") : Serial.println("false");
+    Serial.print("low_floating_pressed = ");   low_floating_pressed   ? Serial.println("true") : Serial.println("false");
+    Serial.print("additional_button = ");      additional_button      ? Serial.println("true") : Serial.println("false");
+    Serial.print("STATUS "); Serial.print(current_status);
+  }
+
+  if (additional_button) {
+      alarm_disabled = !alarm_disabled;
+      if (DEBUG){
+        Serial.println("");
+        Serial.print("Change alarm status to "); !alarm_disabled ? Serial.println("true") : Serial.println("false");
+      }        
+      if (alarm_disabled) {
+        BlinkRed();  
+      } else {
+        BlinkGreen();  
+      }
+
+       switch(current_status) {
+        case FINE: SetGreen(); break;
+        case WARNING_RESTORING: 
+        case WARNING: SetBlue(); break;
+        case CRITICAL: SetRed(); break;
+      }
+  }
 
   if (millis() - last_email_sent > STATUS_EMAIL_INTERVAL) {
       ConnectToWifiAndSendEmail("CHECKUP", "Il sitema è up and running!");
       last_email_sent = millis();
   }
 
-  if (current_status != FINE) {
+  if (current_status != FINE && !alarm_disabled) {
       myPlayer.play(ALARM);
   }
 
-  bool hight_floating_pressed = IsPressed(FLOATINGHIGHT_PIN);
-  bool   low_floating_pressed = IsPressed(FLOATINGLOW_PIN);
-
-  if (DEBUG) {
-    Serial.println("");
-    Serial.print("hight_floating_pressed = "); hight_floating_pressed ? Serial.println("true") : Serial.println("false");
-    Serial.print("low_floating_pressed = ");   low_floating_pressed ? Serial.println("true") : Serial.println("false");
-  }
-
-  
   if (!last_email_succesfully_sent) {
       switch(current_status) {
         case FINE: last_email_succesfully_sent = ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità."); break;
@@ -282,9 +339,9 @@ void loop(){
     last_email_succesfully_sent = ConnectToWifiAndSendEmail("OK", "Tutto è tornato alla normalità.");
   } 
   if (current_status == FINE){
-    delay(60000);
+    delay(LOOP_DELAY_NORMAL_MODE);
   } else {
-    delay(10000);
+    delay(LOOP_DELAY_PROBLEM_MODE);
   }
 }
 
