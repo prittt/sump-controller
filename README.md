@@ -2,8 +2,13 @@
 
 An basic IoT project to monitor and control the water level in a collecting sump using ESP8266 NodeMCU with email notifications and visual/audio alerts.
 
-![Project Image 1](imgs/Img%2001.jpeg)
-![Project Image 2](imgs/Img%2002.jpeg)
+<p align="center">
+  <img src="imgs/Img%2002.jpeg" width="19%" />
+  <img src="imgs/Img%2004.jpeg" width="19%" />
+  <img src="imgs/Img%2001.jpeg" width="19%" />
+  <img src="imgs/Img%2010.jpeg" width="19%" />
+  <img src="imgs/Img%2005.jpeg" width="19%" />
+</p>
 
 ## Overview
 
@@ -36,9 +41,6 @@ This project implements a smart water level monitoring system for sump pumps or 
 - Connecting wires
 - Power supply (5V USB or appropriate power source)
 
-![Project Image 3](imgs/Img%2003.jpeg)
-![Project Image 4](imgs/Img%2004.jpeg)
-
 ## Pin Configuration
 
 | Component | GPIO Pin | NodeMCU Pin |
@@ -51,17 +53,12 @@ This project implements a smart water level monitoring system for sump pumps or 
 | Green LED | GPIO 16 | D0 |
 | Additional Button | GPIO 10 | SD3 |
 
-![Pin Reference](utils/NodeMCU%20ESP8266%20Pin%20Numbering.jpg)
-
 ## Circuit Diagram
 
 The Fritzing schematic is available in the `fritzing/` folder. Additional custom modules used in the design:
 - ESP8266 NodeMCU module
 - Passive Buzzer module
 - RGB Full Color LED module
-
-![Project Image 5](imgs/Img%2005.jpeg)
-![Project Image 6](imgs/Img%2006.jpeg)
 
 ## Software Dependencies
 
@@ -129,9 +126,6 @@ The system operates in four different states:
 2. **WARNING (Blue LED)**: Low float switch is activated, water level is rising
 3. **WARNING_RESTORING (Blue LED)**: High float switch deactivated but low float still active
 4. **CRITICAL (Red LED)**: High float switch is activated, water level is dangerously high
-
-![Project Image 7](imgs/Img%2007.jpeg)
-![Project Image 8](imgs/Img%2008.jpeg)
 
 ## Operation
 
