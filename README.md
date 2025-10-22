@@ -161,8 +161,3 @@ To enable serial debug output, set:
 ```
 
 This will print detailed status information to the Serial Monitor at 115200 baud.
-
-## License
-
-This project is licensed under the terms specified in the LICENSE file.
-
